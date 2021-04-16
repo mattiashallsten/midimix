@@ -6,7 +6,7 @@
 MidiMix {
 	var knobs, knobLabels, faders, faderLabels, faderLabelsOver;
 	var masterFader, masterFaderLabel, buttons, buttonLabels;
-	var buttonRow1View, buttonRow2View;
+	var buttonViews;
 	var buttonActiveLayer;
 	var buttonTypes, buttonActions;
 	var smallfont, bigfont;
@@ -26,7 +26,8 @@ MidiMix {
 		buttonActiveLayer = 0;
 
 		buttonMidiMap = [
-			[1, 4, 7, 10, 13, 16, 19, 22, 27],
+			[1, 4, 7, 10, 13, 16, 19, 22],
+			[2, 5, 8, 11, 14, 17, 20, 23],
 			[3, 6, 9, 12, 15, 18, 21, 24]
 		];
 		
@@ -52,22 +53,22 @@ MidiMix {
 		.font_(smallfont)
 		.align_(\center);
 
-		buttons = [
-			{Button().states_([["", Color.black, Color.red],["", Color.black, Color.green]])}!9,
-			{Button().states_([["", Color.black, Color.red],["", Color.black, Color.green]])}!8
-		];
-		buttonLabels = [
-			{StaticText().font_(smallfont).align_(\center)}!9,
-			{StaticText().font_(smallfont).align_(\center)}!8,
-		];
-		buttonTypes = [
-			{'toggle'}!9,
-			{'toggle'}!8
-		];
-		buttonActions = [
-			nil!9,
-			nil!8
-		];
+		buttons = 3.collect{
+			8.collect{
+				Button()
+				.states_([["", Color.black, Color.red],["", Color.black, Color.green]])
+				.font_(smallfont)
+			}
+		};
+		buttonLabels = 3.collect{
+			8.collect{
+				StaticText()
+				.font_(smallfont)
+				.align_(\center)
+			}
+		};
+		buttonTypes = 'toggle'!8!3;
+		buttonActions = nil!8!3;
 		buttons.do{|row, i|
 			row.do{|button, j|
 				button.action = {
@@ -80,11 +81,12 @@ MidiMix {
 				}
 			}
 		};
+		buttonViews = {View().background_(Color.grey)}!3;
+		buttonViews[1].background_(Color.black);
 
-		buttonRow1View = View().background_(Color.grey);
-		buttonRow1View.layout = HLayout(*buttons[0]);
-		buttonRow2View = View();
-		
+		buttonViews.do{|item, index|
+			item.layout = HLayout(*(buttons[index] ++ View()))
+		};
 
 		this.setupMIDI();
 	}
@@ -150,6 +152,7 @@ MidiMix {
 			MIDIFunc.noteOn({|val, num|
 				var row = nil, col = nil;
 				switch(num,
+					// Row 1
 					1, {row = 0; col = 0},
 					4, {row = 0; col = 1},
 					7, {row = 0; col = 2},
@@ -158,15 +161,24 @@ MidiMix {
 					16, {row = 0; col = 5},
 					19, {row = 0; col = 6},
 					22, {row = 0; col = 7},
-					27, {row = 0; col = 8},
-					3, {row = 1; col = 0},
-					6, {row = 1; col = 1},
-					9, {row = 1; col = 2},
-					12, {row = 1; col = 3},
-					15, {row = 1; col = 4},
-					18, {row = 1; col = 5},
-					21, {row = 1; col = 6},
-					24, {row = 1; col = 7},
+					// Row 2
+					2, {row = 1; col = 0},
+					5, {row = 1; col = 1},
+					8, {row = 1; col = 2},
+					11, {row = 1; col = 3},
+					14, {row = 1; col = 4},
+					17, {row = 1; col = 5},
+					20, {row = 1; col = 6},
+					23, {row = 1; col = 7},
+					// Row 3
+					3, {row = 2; col = 0},
+					6, {row = 2; col = 1},
+					9, {row = 2; col = 2},
+					12, {row = 2; col = 3},
+					15, {row = 2; col = 4},
+					18, {row = 2; col = 5},
+					21, {row = 2; col = 6},
+					24, {row = 2; col = 7},
 
 				);
 
@@ -188,12 +200,22 @@ MidiMix {
 							});
 						}
 					);
-				})
+				});
+
+				if(num == 27, {
+					buttonActiveLayer = 1;
+					this.updateMidiButtons;
+					AppClock.play(Routine{
+						buttonViews[1].background_(Color.grey);
+						buttonViews[0].background_(Color.black);
+					});
+				});
 			}, srcID: mUid);
 			
 			MIDIFunc.noteOff({|val, num|
 				var row = 0, col = 0;
 				switch(num,
+					// Row 1
 					1, {row = 0; col = 0},
 					4, {row = 0; col = 1},
 					7, {row = 0; col = 2},
@@ -201,14 +223,24 @@ MidiMix {
 					13, {row = 0; col = 4},
 					16, {row = 0; col = 5},
 					19, {row = 0; col = 22},
-					3, {row = 1; col = 0},
-					6, {row = 1; col = 1},
-					9, {row = 1; col = 2},
-					12, {row = 1; col = 3},
-					15, {row = 1; col = 4},
-					18, {row = 1; col = 5},
-					21, {row = 1; col = 6},
-					24, {row = 1; col = 7}
+					// Row 2
+					2, {row = 1; col = 0},
+					5, {row = 1; col = 1},
+					8, {row = 1; col = 2},
+					11, {row = 1; col = 3},
+					14, {row = 1; col = 4},
+					17, {row = 1; col = 5},
+					20, {row = 1; col = 6},
+					23, {row = 1; col = 7},
+					// Row 3
+					3, {row = 2; col = 0},
+					6, {row = 2; col = 1},
+					9, {row = 2; col = 2},
+					12, {row = 2; col = 3},
+					15, {row = 2; col = 4},
+					18, {row = 2; col = 5},
+					21, {row = 2; col = 6},
+					24, {row = 2; col = 7}
 				);
 
 				if(buttonTypes[row][col] == 'mom', {
@@ -216,8 +248,30 @@ MidiMix {
 						buttons[row][col].valueAction_(0);
 					});
 				});
+
+				if(num == 27, {
+					buttonActiveLayer = 0;
+					this.updateMidiButtons;
+					AppClock.play(Routine{
+						buttonViews[0].background_(Color.grey);
+						buttonViews[1].background_(Color.black);
+					});
+				});
 			}, srcID: mUid);
 		)
+	}
+
+	// *** Instance method: updateMidiButtons
+	updateMidiButtons {
+		AppClock.play(Routine{
+			if(mOut.notNil, {
+				buttons.do{|row, i|
+					row.do{|button, j|
+						mOut.noteOn(0, buttonMidiMap[i][j], button.value * 127)
+					}
+				}
+			});
+		})
 	}
 
 	// *** Instance method: findAndConnectMIDIMix
@@ -243,7 +297,7 @@ MidiMix {
 			this.closeGui()
 		});
 
-		window = Window.new("MIDI Mix", Rect(200, 200, 800, 600));
+		window = Window.new("MIDI Mix", Rect(200, 200, 1000, 800));
 
 		window.layout = VLayout(
 			StaticText().string_("MIDI Mix").font_(bigfont).align_(\center),
@@ -266,10 +320,11 @@ MidiMix {
 
 			// Buttons
 			//HLayout(*buttons[0]),
-			HLayout(buttonRow1View),
+			HLayout(buttonViews[0]),
 			HLayout(*buttonLabels[0]),
-			HLayout(*(buttons[1] ++ View())),
+			HLayout(buttonViews[1]),
 			HLayout(*buttonLabels[1]),
+			HLayout(buttonViews[2]),
 
 			// Faders
 			HLayout(*(faderLabelsOver ++ masterFaderLabel)),
@@ -358,6 +413,11 @@ MidiMix {
 	// *** Instance method: setButtonType
 	setButtonType {|row = 0, col = 0, type|
 		buttonTypes.clipAt(row).clipPut(col, type)
+	}
+
+	// *** Instance method: setAllButtonTypes
+	setAllButtonTypes {|type|
+		3.do{|i| 8.do{|j| buttonTypes[i][j] = type } }
 	}
 
 	// *** Instance method: setLabel
