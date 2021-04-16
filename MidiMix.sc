@@ -1,7 +1,16 @@
+//////////////////////////////////////
+// MIDI Mix SuperCollider interface //
+// Mattias Hållsten 2021		    //
+//////////////////////////////////////
+
 MidiMix {
-	var knobs, knobLabels, faders, faderLabels, faderLabelsOver, masterFader, masterFaderLabel, buttons, buttonLabels;
+	var knobs, knobLabels, faders, faderLabels, faderLabelsOver;
+	var masterFader, masterFaderLabel, buttons, buttonLabels;
+	var buttonRow1View, buttonRow2View;
+	var buttonActiveLayer;
+	var buttonTypes, buttonActions;
 	var smallfont, bigfont;
-	var <mOut, <mUid, midifuncs;
+	var <mOut, <mUid, midifuncs, buttonMidiMap;
 	var window;
 
 	// *** Class method: new
@@ -13,6 +22,13 @@ MidiMix {
 	init {
 		smallfont = Font.monospace(12);
 		bigfont = Font.monospace(36);
+
+		buttonActiveLayer = 0;
+
+		buttonMidiMap = [
+			[1, 4, 7, 10, 13, 16, 19, 22, 27],
+			[3, 6, 9, 12, 15, 18, 21, 24]
+		];
 		
 		knobs = 3.collect{
 			{Knob()}!8
@@ -20,6 +36,7 @@ MidiMix {
 		knobLabels = 3.collect{
 			{StaticText().font_(smallfont).align_(\center)}!8
 		};
+
 		faders = {Slider()}!8;
 		faderLabelsOver = 8.collect{|i|
 			StaticText()
@@ -36,13 +53,38 @@ MidiMix {
 		.align_(\center);
 
 		buttons = [
-			{Button()}!9,
-			{Button()}!8
+			{Button().states_([["", Color.black, Color.red],["", Color.black, Color.green]])}!9,
+			{Button().states_([["", Color.black, Color.red],["", Color.black, Color.green]])}!8
 		];
 		buttonLabels = [
 			{StaticText().font_(smallfont).align_(\center)}!9,
 			{StaticText().font_(smallfont).align_(\center)}!8,
 		];
+		buttonTypes = [
+			{'toggle'}!9,
+			{'toggle'}!8
+		];
+		buttonActions = [
+			nil!9,
+			nil!8
+		];
+		buttons.do{|row, i|
+			row.do{|button, j|
+				button.action = {
+					if(buttonActions[i][j].notNil, {
+						buttonActions[i][j].value(button.value);
+					});
+					if((mOut.notNil) && (buttonMidiMap[i][j].notNil), {
+						mOut.noteOn(0, buttonMidiMap[i][j], button.value.asInteger * 127)
+					})
+				}
+			}
+		};
+
+		buttonRow1View = View().background_(Color.grey);
+		buttonRow1View.layout = HLayout(*buttons[0]);
+		buttonRow2View = View();
+		
 
 		this.setupMIDI();
 	}
@@ -58,22 +100,124 @@ MidiMix {
 
 		midifuncs = midifuncs.add(
 			MIDIFunc.cc({|val, num|
+				var value = val / 127;
 				AppClock.play(Routine{
-					if(faders[num].notNil, {
-						faders[num].valueAction_(val / 127)
-					});
-					if(knobs[0][num - 24].notNil, {
-						knobs[0][num - 24].valueAction_(val / 127)
-					});
-					if(knobs[1][num - 16].notNil, {
-						knobs[1][num - 16].valueAction_(val / 127)
-					});
-					if(knobs[2][num - 8].notNil, {
-						knobs[2][num - 8].valueAction_(val / 127)
-					});
+					switch(num,
+						// Knobs row 1
+						16, {knobs[0][0].valueAction_(value)},
+						20, {knobs[0][1].valueAction_(value)},
+						24, {knobs[0][2].valueAction_(value)},
+						28, {knobs[0][3].valueAction_(value)},
+						46, {knobs[0][4].valueAction_(value)},
+						50, {knobs[0][5].valueAction_(value)},
+						54, {knobs[0][6].valueAction_(value)},
+						58, {knobs[0][7].valueAction_(value)},
+						// Knobs row 2
+						17, {knobs[1][0].valueAction_(value)},
+						21, {knobs[1][1].valueAction_(value)},
+						25, {knobs[1][2].valueAction_(value)},
+						29, {knobs[1][3].valueAction_(value)},
+						47, {knobs[1][4].valueAction_(value)},
+						51, {knobs[1][5].valueAction_(value)},
+						55, {knobs[1][6].valueAction_(value)},
+						59, {knobs[1][7].valueAction_(value)},
+						// Knobs row 3
+						18, {knobs[2][0].valueAction_(value)},
+						22, {knobs[2][1].valueAction_(value)},
+						26, {knobs[2][2].valueAction_(value)},
+						30, {knobs[2][3].valueAction_(value)},
+						48, {knobs[2][4].valueAction_(value)},
+						52, {knobs[2][5].valueAction_(value)},
+						56, {knobs[2][6].valueAction_(value)},
+						60, {knobs[2][7].valueAction_(value)},
+						// Faders
+						19, {faders[0].valueAction_(value)},
+						23, {faders[1].valueAction_(value)},
+						27, {faders[2].valueAction_(value)},
+						31, {faders[3].valueAction_(value)},
+						49, {faders[4].valueAction_(value)},
+						53, {faders[5].valueAction_(value)},
+						57, {faders[6].valueAction_(value)},
+						61, {faders[7].valueAction_(value)},
+						// master fader
+						62, {masterFader.valueAction_(value)}
+					);
 				});
 				}, srcID: mUid)
 		);
+
+		midifuncs = midifuncs.add(
+			MIDIFunc.noteOn({|val, num|
+				var row = nil, col = nil;
+				switch(num,
+					1, {row = 0; col = 0},
+					4, {row = 0; col = 1},
+					7, {row = 0; col = 2},
+					10, {row = 0; col = 3},
+					13, {row = 0; col = 4},
+					16, {row = 0; col = 5},
+					19, {row = 0; col = 6},
+					22, {row = 0; col = 7},
+					27, {row = 0; col = 8},
+					3, {row = 1; col = 0},
+					6, {row = 1; col = 1},
+					9, {row = 1; col = 2},
+					12, {row = 1; col = 3},
+					15, {row = 1; col = 4},
+					18, {row = 1; col = 5},
+					21, {row = 1; col = 6},
+					24, {row = 1; col = 7},
+
+				);
+
+				if((row.notNil) && (col.notNil), {
+					switch(buttonTypes[row][col],
+						'toggle', {
+							AppClock.play(Routine{
+								var curr = buttons[row][col].value;
+								if(curr == 1, {
+									buttons[row][col].valueAction_(0);
+								}, {
+									buttons[row][col].valueAction_(1)
+								})
+							})
+						},
+						'mom', {
+							AppClock.play(Routine{
+								buttons[row][col].valueAction_(1);
+							});
+						}
+					);
+				})
+			}, srcID: mUid);
+			
+			MIDIFunc.noteOff({|val, num|
+				var row = 0, col = 0;
+				switch(num,
+					1, {row = 0; col = 0},
+					4, {row = 0; col = 1},
+					7, {row = 0; col = 2},
+					10, {row = 0; col = 3},
+					13, {row = 0; col = 4},
+					16, {row = 0; col = 5},
+					19, {row = 0; col = 22},
+					3, {row = 1; col = 0},
+					6, {row = 1; col = 1},
+					9, {row = 1; col = 2},
+					12, {row = 1; col = 3},
+					15, {row = 1; col = 4},
+					18, {row = 1; col = 5},
+					21, {row = 1; col = 6},
+					24, {row = 1; col = 7}
+				);
+
+				if(buttonTypes[row][col] == 'mom', {
+					AppClock.play(Routine{
+						buttons[row][col].valueAction_(0);
+					});
+				});
+			}, srcID: mUid);
+		)
 	}
 
 	// *** Instance method: findAndConnectMIDIMix
@@ -81,7 +225,8 @@ MidiMix {
 		MIDIClient.destinations.do{|item|
 			if(item.device == "MIDI Mix", {
 				"MIDI Mix output connected!".postln;
-				mOut = item
+				mOut = MIDIOut.newByName("MIDI Mix", "MIDI Mix");
+				mOut.latency = 0;
 			})
 		};
 
@@ -120,7 +265,8 @@ MidiMix {
 			HLayout(*(knobLabels[2] ++ View())),
 
 			// Buttons
-			HLayout(*buttons[0]),
+			//HLayout(*buttons[0]),
+			HLayout(buttonRow1View),
 			HLayout(*buttonLabels[0]),
 			HLayout(*(buttons[1] ++ View())),
 			HLayout(*buttonLabels[1]),
@@ -196,16 +342,22 @@ MidiMix {
 				}
 			},
 			'button', {
-				buttons.clipAt(row).clipAt(col).action = {|button|
-					function.value(button.value)
-				}
+				buttonActions.clipAt(row).clipPut(col, function);
+				// buttons.clipAt(row).clipAt(col).action = {|button|
+				// 	function.value(button.value)
+				// }
 			}
 		)
 	}
 
-	// *** Instance method: setButtonState
-	setButtonState {|col = 0, row = 0, states|
+	// *** Instance method: setButtonStates
+	setButtonStates {|col = 0, row = 0, states|
 		buttons.clipAt(col).clipAt(row).states_(states)
+	}
+
+	// *** Instance method: setButtonType
+	setButtonType {|row = 0, col = 0, type|
+		buttonTypes.clipAt(row).clipPut(col, type)
 	}
 
 	// *** Instance method: setLabel
