@@ -142,6 +142,46 @@ MidiMix {
 		window = nil;
 	}
 
+	// *** Instance method: asView
+	asView {|parent|
+		var view = View(parent);
+
+		view.background_(Color.grey);
+
+		view.layout = VLayout(
+			StaticText().string_("MIDI Mix").font_(bigfont).align_(\center),
+			HLayout(
+				StaticText()
+				.font_(smallfont)
+				.string_("MIDI In status: " ++ if(mUid.notNil, {"ON"}, {"OFF"})),
+
+				StaticText()
+				.font_(smallfont)
+				.string_("MIDI Out status: " ++ if(mOut.notNil, {"ON"}, {"OFF"})),
+			),
+			// Knobs
+			HLayout(*(knobs[0] ++ View())),
+			HLayout(*(knobLabels[0] ++ View())),
+			HLayout(*(knobs[1] ++ View())),
+			HLayout(*(knobLabels[1] ++ View())),
+			HLayout(*(knobs[2] ++ View())),
+			HLayout(*(knobLabels[2] ++ View())),
+
+			// Buttons
+			HLayout(*buttons[0]),
+			HLayout(*buttonLabels[0]),
+			HLayout(*(buttons[1] ++ View())),
+			HLayout(*buttonLabels[1]),
+
+			// Faders
+			HLayout(*(faderLabelsOver ++ masterFaderLabel)),
+			HLayout(*(faders ++ masterFader)),
+			HLayout(*faderLabels);
+		);
+
+		^view
+	}
+
 	// *** Instance method: map
 	map {|item = 'knob', row, col, function|
 		switch(item,
