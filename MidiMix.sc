@@ -303,11 +303,21 @@ MIDIMix {
 
 	// *** Instance method: findAndConnectMIDIMix
 	findAndConnectMIDIMix {
-		MIDIClient.destinations.do{|item|
+		MIDIClient.destinations.do{|item, index|
 			if(item.device == "MIDI Mix", {
-				"MIDI Mix output connected!".postln;
-				mOut = MIDIOut.newByName("MIDI Mix", "MIDI Mix");
-				mOut.latency = 0;
+				Platform.case(
+					\osx, {
+						"MIDI Mix output connected!".postln;
+						mOut = MIDIOut.newByName("MIDI Mix", "MIDI Mix");
+						mOut.latency = 0;
+					},
+					\linux, {
+						"MIDI Mix output connected!".postln;
+						mOut = MIDIOut(0);
+						mOut.connect(index);
+						mOut.latency = 0;
+					}
+				)
 			})
 		};
 
