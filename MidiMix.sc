@@ -3,23 +3,23 @@
 // Mattias Hållsten 2021		    //
 //////////////////////////////////////
 
-MidiMix {
+MIDIMix {
 	var knobs, knobLabels, faders, faderLabels, faderLabelsOver;
 	var masterFader, masterFaderLabel, buttons, buttonLabels;
 	var buttonViews;
 	var buttonActiveLayer;
-	var buttonTypes, buttonActions;
+	var buttonTypes, buttonGroups, buttonActions;
 	var smallfont, bigfont;
 	var <mOut, <mUid, midifuncs, buttonMidiMap;
 	var window;
 
 	// *** Class method: new
-	*new {
-		^super.new.init
+	*new {|guiOnLoad = false|
+		^super.new.init(guiOnLoad)
 	}
 
 	// *** Instance method: init
-	init {
+	init {|guiOnLoad = false|
 		smallfont = Font.monospace(12);
 		bigfont = Font.monospace(36);
 
@@ -67,20 +67,43 @@ MidiMix {
 				.align_(\center)
 			}
 		};
+		
 		buttonTypes = 'toggle'!8!3;
 		buttonActions = nil!8!3;
+		buttonGroups = 0!8!3;
+		
 		buttons.do{|row, i|
 			row.do{|button, j|
 				button.action = {
 					if(buttonActions[i][j].notNil, {
 						buttonActions[i][j].value(button.value);
 					});
+
+					if(buttonTypes[i][j] == 'select', {
+						var group = buttonGroups[i][j];
+						buttonGroups.postln;
+						group.postln;
+						3.do{|x|
+							8.do{|y|
+								if(
+									(buttonTypes[x][y] == 'select') &&
+									(buttonGroups[x][y] == group) &&
+									(buttons[x][y].value == 1) &&
+									(buttons[x][y] != button), {
+										"turning off button at %:%\n".postf(x, y);
+										buttons[x][y].valueAction_(0)
+									})
+							}
+						};
+					});
+					
 					if((mOut.notNil) && (buttonMidiMap[i][j].notNil), {
 						mOut.noteOn(0, buttonMidiMap[i][j], button.value.asInteger * 127)
 					})
 				}
 			}
 		};
+		
 		buttonViews = {View().background_(Color.grey)}!3;
 		buttonViews[1].background_(Color.black);
 
@@ -89,6 +112,10 @@ MidiMix {
 		};
 
 		this.setupMIDI();
+
+		if(guiOnLoad, {
+			this.gui;
+		});
 	}
 
 	// *** Instance method: setupMIDI
@@ -431,6 +458,31 @@ MidiMix {
 			},
 			'button', {
 				buttonLabels.clipAt(row).clipAt(col).string_(string)
+			}
+		)
+	}
+
+	// *** Instance method: getButtonValue
+	getButtonValue {|row, col|
+		^buttons.clipAt(row).clipAt(col).value
+	}
+
+	// *** Instance method: setButtonValue
+	setButtonValue {|row, col, val|
+		buttons.clipAt(row).clipAt(col).valueAction_(val)
+	}
+
+	// *** Instance method: setValue
+	setValue {|item = 'knob', row, col, val = 0|
+		switch(item,
+			'knob', {
+				knobs.clipAt(row).clipAt(col).valueAction_(val)
+			},
+			'fader', {
+				faders.clipAt(col).valueAction_(val)
+			},
+			'button', {
+				buttons.clipAt(row).clipAt(col).valueAction_(val)
 			}
 		)
 	}
