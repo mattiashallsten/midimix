@@ -311,6 +311,11 @@ MIDIMix {
 						mOut = MIDIOut.newByName("MIDI Mix", "MIDI Mix");
 						mOut.latency = 0;
 					},
+					\windows, {
+						"MIDI Mix output connected!".postln;
+						mOut = MIDIOut.newByName("MIDI Mix", "MIDI Mix");
+						mOut.latency = 0;
+					},
 					\linux, {
 						"MIDI Mix output connected!".postln;
 						mOut = MIDIOut(0);
